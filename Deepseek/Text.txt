@@ -1,0 +1,50 @@
+
+---
+
+### `data.py`
+
+```python
+"""
+data.py – Fetch historical OHLCV data from Yahoo Finance using yfinance.
+Cached with Streamlit's @st.cache_data to avoid repeated API calls.
+"""
+
+import streamlit as st
+import yfinance as yf
+import pandas as pd
+
+
+@st.cache_data(ttl=3600)  # Cache for 1 hour
+def fetch_data(ticker: str, start: str, end: str) -> pd.DataFrame:
+    """
+    Download historical OHLCV data for a given ticker.
+
+    Parameters
+    ----------
+    ticker : str
+        Yahoo Finance ticker symbol (e.g., 'QQQ', 'BTC-USD').
+    start : str
+        Start date in 'YYYY-MM-DD' format.
+    end : str
+        End date in 'YYYY-MM-DD' format.
+
+    Returns
+    -------
+    pd.DataFrame
+        DataFrame with columns: Open, High, Low, Close, Volume.
+        Returns an empty DataFrame if no data is available.
+    """
+    df = yf.download(ticker, start=start, end=end, progress=False)
+
+    if df.empty:
+        st.error(f"No data found for {ticker} in the selected date range.")
+        return pd.DataFrame()
+
+    # Flatten multi-level column names if present (sometimes yfinance returns MultiIndex)
+    if isinstance(df.columns, pd.MultiIndex):
+        df.columns = df.columns.get_level_values(0)
+
+    # Keep only the required columns
+    df = df[['Open', 'High', 'Low', 'Close', 'Volume']].copy()
+    df.index = pd.to_datetime(df.index)
+    return df
